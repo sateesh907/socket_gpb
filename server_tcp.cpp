@@ -21,7 +21,6 @@ struct sockaddr_in server_addr,client_addr;
 int sin_size;
 MesgBuff mb;
 string srz_snd,srz_rcv;
-static int exit_flag=0;
 int main()
 {
         //connect to socket
@@ -36,7 +35,7 @@ int main()
             exit(1);
         }
         server_addr.sin_family = AF_INET;         
-        server_addr.sin_port = htons(5000);     
+        server_addr.sin_port = htons(8000);     
         server_addr.sin_addr.s_addr = INADDR_ANY; 
         bzero(&(server_addr.sin_zero),8); 
 		
@@ -52,7 +51,7 @@ int main()
             exit(1);
         }
 		
-		cout<<"TCPServer Waiting for client on port 5000"<<endl;
+		cout<<"TCPServer Waiting for client on port 8000"<<endl;
 
 		GOOGLE_PROTOBUF_VERIFY_VERSION;
 
@@ -72,11 +71,9 @@ int main()
 	  close(sock);
       return 0;
 } 
+
 void rcvs(){
 	while(1){
-				if(exit_flag==1){
-					goto FINISH;
-				}
 				bytes_received = recv(connected,recv_data,1024,0);
 				recv_data[bytes_received] = '\0';
 				srz_rcv=recv_data;
@@ -110,7 +107,6 @@ void snds(){
 			  mb.Clear();
 	}
 	FINISH:
-		exit_flag=1;
 		close(connected);
 		exit(0);
 }

@@ -19,7 +19,6 @@ struct hostent *host;
 struct sockaddr_in server_addr;
 MesgBuff mbc;
 string crz_snd,crz_rcv;  
-static int exit_flag=0;
 int main()
 
 {
@@ -31,7 +30,7 @@ int main()
         }
 
         server_addr.sin_family = AF_INET;     
-        server_addr.sin_port = htons(5000);   
+        server_addr.sin_port = htons(8000);   
         server_addr.sin_addr = *((struct in_addr *)host->h_addr);
         bzero(&(server_addr.sin_zero),8); 
 
@@ -57,7 +56,6 @@ void snd(){
             mbc.set_msg(send_data);
 		    mbc.SerializeToString(&crz_snd);
           if (strcmp(crz_snd.c_str() , "q") == 0 || strcmp(crz_snd.c_str() , "Q") == 0){
-			  exit_flag=1;
           	send(sock, crz_snd.c_str(),1024, 0);
 			goto FINISH;
 			}
@@ -72,9 +70,6 @@ void snd(){
 }
 void rcv(){
 	while(1){
-			if(exit_flag==1){
-				goto FINISH;
-			}
 			bytes_recieved=recv(sock,recv_data,1024,0);
 			recv_data[bytes_recieved] = '\0';
 			mbc.ParseFromString(recv_data);
@@ -88,6 +83,6 @@ void rcv(){
 			mbc.Clear();
 	}
 	FINISH:
-		 //close(sock);
+		 close(sock);
 		 exit(0);
 }
