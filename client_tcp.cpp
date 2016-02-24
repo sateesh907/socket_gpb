@@ -19,6 +19,7 @@ struct hostent *host;
 struct sockaddr_in server_addr;
 MesgBuff mbc;
 string crz_snd,crz_rcv;  
+
 int main()
 
 {
@@ -30,7 +31,7 @@ int main()
         }
 
         server_addr.sin_family = AF_INET;     
-        server_addr.sin_port = htons(8000);   
+        server_addr.sin_port = htons(8001);   
         server_addr.sin_addr = *((struct in_addr *)host->h_addr);
         bzero(&(server_addr.sin_zero),8); 
 
@@ -49,6 +50,16 @@ int main()
 			}   
 	return 0;
 	}
+	
+inline void closeSock(){
+		if(shutdown(sock,SHUT_RDWR)==0){
+			cout<<"connection closed"<<endl;
+		}
+		else{
+			cout<<"connection closing error"<<endl;
+		}
+		exit(1);
+}
 void snd(){
 	while(1){
 			cout<<"sent : ";
@@ -56,17 +67,15 @@ void snd(){
             mbc.set_msg(send_data);
 		    mbc.SerializeToString(&crz_snd);
           if (strcmp(crz_snd.c_str() , "q") == 0 || strcmp(crz_snd.c_str() , "Q") == 0){
-          	send(sock, crz_snd.c_str(),1024, 0);
-			goto FINISH;
+          	//send(sock, crz_snd.c_str(),1024, 0);
+			closeSock();
 			}
            else{
            send(sock, crz_snd.c_str(),mbc.ByteSize(), 0);
         }
 		mbc.Clear();
 	}
-	FINISH:
-		close(sock);
-		exit(0);
+	
 }
 void rcv(){
 	while(1){
@@ -75,14 +84,11 @@ void rcv(){
 			mbc.ParseFromString(recv_data);
 			crz_rcv=mbc.msg();
           if (strcmp(crz_rcv.c_str() , "q") == 0 || strcmp(crz_rcv.c_str() , "Q") == 0){
-			  goto FINISH;
+			  closeSock();
           }
 		   else{
 		   		cout<<"Recieved : "<<crz_rcv<<endl;
        		}
 			mbc.Clear();
 	}
-	FINISH:
-		 close(sock);
-		 exit(0);
 }
