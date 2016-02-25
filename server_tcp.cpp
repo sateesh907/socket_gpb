@@ -20,7 +20,7 @@ int sock, connected, bytes_received , yes = 1;
 char send_data [1024] , recv_data[1024];
 struct sockaddr_in server_addr,client_addr;
 int sin_size;
-MesgBuff mb;
+MesgBuff *mb = new MesgBuff();
 string srz_snd,srz_rcv;
 
 char imageid[]="image1";
@@ -95,8 +95,8 @@ void rcvs(){
 				bytes_received = recv(connected,recv_data,1024,0);
 				recv_data[bytes_received] = '\0';
 				srz_rcv=recv_data;
-				mb.ParseFromString(srz_rcv);
-				srz_rcv=mb.msg();
+				mb->ParseFromString(srz_rcv);
+				srz_rcv=mb->msg();
               if (strcmp(srz_rcv.c_str() , "q") == 0 || strcmp(srz_rcv.c_str() , "Q") == 0){
 				closeSock();
               }
@@ -111,7 +111,7 @@ void rcvs(){
 			  else{
               	cout<<inet_ntoa(client_addr.sin_addr)<<" : "<<srz_rcv<<endl;
               }
-			   mb.Clear();
+			   mb->Clear();
 	}
 }
 
@@ -119,15 +119,15 @@ void snds(){
 	while(1){
 				 cout<<"sent : ";
 				 cin>>send_data;
-				 mb.set_msg(send_data);
-				 mb.SerializeToString(&srz_snd);
+				 mb->set_msg(send_data);
+				 mb->SerializeToString(&srz_snd);
               if (strcmp(srz_snd.c_str() , "q") == 0 || strcmp(srz_snd.c_str() , "Q") == 0){
                 send(connected, srz_snd.c_str(),1024, 0);
 					closeSock();
               }
               else{
-                 send(connected, srz_snd.c_str(),mb.ByteSize(), 0);
+                 send(connected, srz_snd.c_str(),mb->ByteSize(), 0);
 			  }
-			  mb.Clear();
+			  mb->Clear();
 	}
 }

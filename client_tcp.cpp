@@ -17,7 +17,7 @@ int sock, bytes_recieved;
 char send_data[1024],recv_data[1024];
 struct hostent *host;
 struct sockaddr_in server_addr;
-MesgBuff mbc;
+MesgBuff *mbc= new MesgBuff();
 string crz_snd,crz_rcv;  
 
 int main()
@@ -64,16 +64,16 @@ void snd(){
 	while(1){
 			cout<<"sent : ";
 			cin>>send_data;
-            mbc.set_msg(send_data);
-		    mbc.SerializeToString(&crz_snd);
+            mbc->set_msg(send_data);
+		    mbc->SerializeToString(&crz_snd);
           if (strcmp(crz_snd.c_str() , "q") == 0 || strcmp(crz_snd.c_str() , "Q") == 0){
           	//send(sock, crz_snd.c_str(),1024, 0);
 			closeSock();
 			}
            else{
-           send(sock, crz_snd.c_str(),mbc.ByteSize(), 0);
+           send(sock, crz_snd.c_str(),mbc->ByteSize(), 0);
         }
-		mbc.Clear();
+		mbc->Clear();
 	}
 	
 }
@@ -81,14 +81,14 @@ void rcv(){
 	while(1){
 			bytes_recieved=recv(sock,recv_data,1024,0);
 			recv_data[bytes_recieved] = '\0';
-			mbc.ParseFromString(recv_data);
-			crz_rcv=mbc.msg();
+			mbc->ParseFromString(recv_data);
+			crz_rcv=mbc->msg();
           if (strcmp(crz_rcv.c_str() , "q") == 0 || strcmp(crz_rcv.c_str() , "Q") == 0){
 			  closeSock();
           }
 		   else{
 		   		cout<<"Recieved : "<<crz_rcv<<endl;
        		}
-			mbc.Clear();
+			mbc->Clear();
 	}
 }
