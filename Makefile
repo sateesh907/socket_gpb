@@ -12,14 +12,10 @@ LNKS = -lprotobuf -lpthread
 server: 
 		@echo "============compiling server================"
 		$(CC) $(CFLAGS) $(INCLUDES) $(LIBS) $(SER_FILES) -o $(SER_OUT) $(LNKS)
-		@echo "=============running server================="
-		./server_tcp
 	
 client:
 		@echo "============compiling client================"
 		$(CC) $(CFLAGS) $(INCLUDES) $(LIBS) $(CLI_FILES) -o $(CLI_OUT) $(LNKS)
-		@echo "=============running client================="
-		./client_tcp
 		
 clean:
 		rm *.exe
