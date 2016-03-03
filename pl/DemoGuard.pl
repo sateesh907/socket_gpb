@@ -68,6 +68,7 @@ if ($source) {
   &write_source_methods11();
   &write_source_methods2();
   &write_source_methods3();
+  &write_subscribe_data();
 }
 
 
@@ -82,7 +83,7 @@ sub query_for_methods() {
 		  if($val1->[8] ne ""){
 		  push(@eDPId,$val1->[8]);#sr
 		  push(@fuclassid,$val1->[9]);#sr
-		  %fuclsid($val1->[9]=>$val1->[8]);#sr
+		  %fuclsid($val1->[8]=>$val1->[9]);#sr
 		  }
    	  my $name = undef;
           if( $val1->[0] ne "")
@@ -206,6 +207,8 @@ sub write_header_methods() {
   // Precondition:
 ");
     }
+	 print(MYFILE "
+	 void InitSubscribeDynamicData();");
   close (MYFILE);
 }
 
@@ -451,49 +454,58 @@ bool ${class_name}::$method_names[$i]()
 }	
 ");
 
-
 	}
 close (MYFILE);
 }
 
 sub write_subscribe_data() {
 	open (MYFILE, ">>", "$source_file_name");
-	my ($i = 0,$j=1);
-	$eDPId_len = $#eDPId;
-	$str_apnd = join(",",@eDPId[0..4]);
-	my $vararr_crt = "eDPId";
-	my @fucls = sort keys %fuclsid;
+	my @fucls = sort {$x <=> $y} values %fuclsid;
+	my %fucls_sval = sort {$x <=> $y} values %fuclsid;
 	my @uniqfucls = uniq(@fucls);
 	my @arr;
 	my $count=0;
+	state $k = 1;
 	print(MYFILE "
 		void InitSubscribeDynamicData() { 
 		");
 		
 	F1:for (my $m=0;$m<scalar(@uniqfucls)-1;$m++){
 		for(my $a=0;$a<scalar(@fucls)-1;$a++){
-			my $k = $m;
 			if($uniqfucls[$m] eq $fucls[$a]){
 				$count++;
-				if($count <= 5){
+				if($count le 5){
 				push(@arr,sort keys %fuclsid{$a});
 				}
-				if($count gt 5){
+				if($count eq 5){
 					my $concatarr = join(",",@arr);
 					my $arrsize = @arr;
 					print(MYFILE "
 		eDataPoolId eDPId$k[] = {$concatarr};
-        ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsize,eDPId$m,UNUSED);
+        ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsize,eDPId$k,UNUSED);
 		");
 				$count = 0xFFFFFF;
 				@arr = ();
 				$k++;
+				}
+				elsif(($uniqfucls[$m] ne $fucls[$a]) && $count lt 5){
+					my $concatarr = join(",",@arr);
+					my $arrsize = @arr;
+					print(MYFILE "
+		eDataPoolId eDPId$k[] = {$concatarr};
+        ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsize,eDPId$k,UNUSED);
+		");
+				$count = 0xFFFFFF;
+				@arr = ();
+				$k++;
+				goto F1;
 				}
 			}
 			else{
 				goto F1;
 			}
 		}
-		#my $arrsize = split(/,/,$str_apnd);
 	}
+	print(MYFILE " }");
+	close(MYFILE);
 }
