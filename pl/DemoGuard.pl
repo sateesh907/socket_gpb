@@ -464,48 +464,37 @@ sub write_subscribe_data(){
 	}
 	my @karr_dpid;
 	state $arr_counter=1;
-	my @fucls_id = do { my %seen; grep { !$seen{$_}++ } values %dpid_fuclassid}; #unique fuclass_id
+	my @fucls_id = sort {$a <=> $b} (do { my %seen; grep { !$seen{$_}++ } values %dpid_fuclassid}); #unique fuclass_id
 	my $size = keys %dpid_fuclassid;
 	open (MYFILE, ">>", "$source_file_name");
 	print(MYFILE "void InitSubscribeDynamicData(){  ");
 	foreach my $fucls(@fucls_id){
-		my $size_count = 1;
-		my $count=1;
-		foreach $k (keys %dpid_fuclassid){
-			if(($count le 5) and ($fucls eq $dpid_fuclassid{$k})){
+		foreach $k (sort { $dpid_fuclassid{$a} <=> $dpid_fuclassid{$b} } keys %dpid_fuclassid){
+			if((scalar(@karr_dpid) le 5) and ($fucls eq $dpid_fuclassid{$k})){
 				push(@karr_dpid,$k);
-				if($count eq 5){
+				if(scalar(@karr_dpid) eq 5){
+				$arrsz = @karr_dpid;
 				$str_arr = join(",",@karr_dpid);
 				print(MYFILE "
 		eDataPoolId eDPId$arr_counter\[\] = {$str_arr};
-		ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,5,eDPId$arr_counter,UNUSED); // FU - $dpid_fuclassid{$k}
+		ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsz,eDPId$arr_counter,UNUSED); // FU - $fucls
 				");
 				$arr_counter++;
 				@karr_dpid = ();
-				$count = 0;
 				}
 			}
-			# elsif(($count ge 5) and ($fucls eq $dpid_fuclassid{$k})){
-				# $count = 0;
-			# }
-			 elsif(($count lt 5) and ($fucls ne $dpid_fuclassid{$k})){
-				$size_count++;
-				next;
-			 }
-			 if(($count lt 5) and ($size_count eq $size)){
+			 if((scalar(@karr_dpid) lt 5 and scalar(@karr_dpid) ne 0) and ($fucls ne $dpid_fuclassid{$k})){
+				$arrsz = @karr_dpid;
 				$str_arr = join(",",@karr_dpid);
 				print(MYFILE "
 		eDataPoolId eDPId$arr_counter\[\] = {$str_arr};
-		ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,5,eDPId$arr_counter,UNUSED); // FU - $dpid_fuclassid{$k}
+		ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsz,eDPId$arr_counter,UNUSED); // FU - $fucls
 				");
 				$arr_counter++;
 				@karr_dpid = ();
 			 }
-			$count++;
-			$size_count++;
 		}
 	}
-	print "\n",@karr_dpid;
 	print(MYFILE "
 	}");
 	close(MYFILE);
