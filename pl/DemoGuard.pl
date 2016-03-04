@@ -6,7 +6,7 @@ use Spreadsheet::BasicRead;
 use Cwd;
 use Cwd 'abs_path';
 use File::Basename;
-use List::MoreUtils qw(uniq);
+use 5.010;
 
 # getting the spreadsheet object and using the object reading the row data.
 
@@ -48,9 +48,7 @@ my @data_values;
 my @oprnd_names;
 my @Id_names;
 my @expression_values;
-my @eDPId;#sr
-my @fuclassid;#sr
-my %fuclsid;#sr
+my %dpid_fuclassid;
 
 if ($query) {
   &query_for_methods();
@@ -80,11 +78,7 @@ sub query_for_methods() {
     for my $row ( $row_min .. $row_max )
     {
     	  my $val1= $read->getNextRow();
-		  if($val1->[8] ne ""){
-		  push(@eDPId,$val1->[8]);#sr
-		  push(@fuclassid,$val1->[9]);#sr
-		  %fuclsid($val1->[8]=>$val1->[9]);#sr
-		  }
+		  
    	  my $name = undef;
           if( $val1->[0] ne "")
     	  {	  
@@ -207,9 +201,8 @@ sub write_header_methods() {
   // Precondition:
 ");
     }
-	 print(MYFILE "
-	 void InitSubscribeDynamicData();");
-  close (MYFILE);
+	print(MYFILE "\n  void InitSubscribeDynamicData();\n");
+    close (MYFILE);
 }
 
 #------------------------------------------------------------------------------
@@ -244,9 +237,9 @@ sub write_top_of_source() {
 //
 
 #include \"$project_dir/$class_name.h\"
-#include "common.h"
-#include "guards.h"
-#include "modelcfgif.h"
+#include \"common.h\"
+#include \"guards.h\"
+#include \"modelcfgif.h\"
 // types: classes, enums, typedefs, namespaces
 // variables: consts, statics, exported variables (declared extern elsewhere)
 // local forward function declarations
@@ -454,58 +447,66 @@ bool ${class_name}::$method_names[$i]()
 }	
 ");
 
+
 	}
 close (MYFILE);
 }
 
-sub write_subscribe_data() {
+sub write_subscribe_data(){
+	print "write_subscribe_data method....\n";
+	$read->setRow(2);
+	 for my $row ( $row_min .. $row_max )
+    {
+    	  my $val_col= $read->getNextRow();
+		  if($val_col->[8] ne ""){
+			$dpid_fuclassid{$val_col->[8]} = $val_col->[9];
+		  }
+	}
+	my @karr_dpid;
+	state $arr_counter=1;
+	my @fucls_id = do { my %seen; grep { !$seen{$_}++ } values %dpid_fuclassid}; #unique fuclass_id
+	my $size = keys %dpid_fuclassid;
 	open (MYFILE, ">>", "$source_file_name");
-	my @fucls = sort {$x <=> $y} values %fuclsid;
-	my %fucls_sval = sort {$x <=> $y} values %fuclsid;
-	my @uniqfucls = uniq(@fucls);
-	my @arr;
-	my $count=0;
-	state $k = 1;
-	print(MYFILE "
-		void InitSubscribeDynamicData() { 
-		");
-		
-	F1:for (my $m=0;$m<scalar(@uniqfucls)-1;$m++){
-		for(my $a=0;$a<scalar(@fucls)-1;$a++){
-			if($uniqfucls[$m] eq $fucls[$a]){
-				$count++;
-				if($count le 5){
-				push(@arr,sort keys %fuclsid{$a});
-				}
+	print(MYFILE "void InitSubscribeDynamicData(){  ");
+	foreach my $fucls(@fucls_id){
+		my $size_count = 1;
+		my $count=1;
+		foreach $k (keys %dpid_fuclassid){
+			if(($count le 5) and ($fucls eq $dpid_fuclassid{$k})){
+				push(@karr_dpid,$k);
 				if($count eq 5){
-					my $concatarr = join(",",@arr);
-					my $arrsize = @arr;
-					print(MYFILE "
-		eDataPoolId eDPId$k[] = {$concatarr};
-        ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsize,eDPId$k,UNUSED);
-		");
-				$count = 0xFFFFFF;
-				@arr = ();
-				$k++;
-				}
-				elsif(($uniqfucls[$m] ne $fucls[$a]) && $count lt 5){
-					my $concatarr = join(",",@arr);
-					my $arrsize = @arr;
-					print(MYFILE "
-		eDataPoolId eDPId$k[] = {$concatarr};
-        ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,$arrsize,eDPId$k,UNUSED);
-		");
-				$count = 0xFFFFFF;
-				@arr = ();
-				$k++;
-				goto F1;
+				$str_arr = join(",",@karr_dpid);
+				print(MYFILE "
+		eDataPoolId eDPId$arr_counter\[\] = {$str_arr};
+		ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,5,eDPId$arr_counter,UNUSED); // FU - $dpid_fuclassid{$k}
+				");
+				$arr_counter++;
+				@karr_dpid = ();
+				$count = 0;
 				}
 			}
-			else{
-				goto F1;
-			}
+			# elsif(($count ge 5) and ($fucls eq $dpid_fuclassid{$k})){
+				# $count = 0;
+			# }
+			 elsif(($count lt 5) and ($fucls ne $dpid_fuclassid{$k})){
+				$size_count++;
+				next;
+			 }
+			 if(($count lt 5) and ($size_count eq $size)){
+				$str_arr = join(",",@karr_dpid);
+				print(MYFILE "
+		eDataPoolId eDPId$arr_counter\[\] = {$str_arr};
+		ModelCfgIf::GetInstance().CallDataSubscribe(SUBSCRIBE,5,eDPId$arr_counter,UNUSED); // FU - $dpid_fuclassid{$k}
+				");
+				$arr_counter++;
+				@karr_dpid = ();
+			 }
+			$count++;
+			$size_count++;
 		}
 	}
-	print(MYFILE " }");
+	print "\n",@karr_dpid;
+	print(MYFILE "
+	}");
 	close(MYFILE);
 }
